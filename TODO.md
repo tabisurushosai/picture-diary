@@ -1,0 +1,12 @@
+# picture-diary TODO
+- [ ] T001: src/popup.ts に popup骨格(今日の記録 + 過去一覧)を構築
+- [ ] T1B: 保存は src/storage.ts の store(get/set/remove)経由に統一し、状態・ロジックは src/core/ に chrome.*/DOM 非依存で分離する(将来PWA移植のため)
+- [ ] T002: 今日のエントリ作成(絵文字複数+ひとこと)を実装
+- [ ] T003: 日付ごとに chrome.storage.local へ保存・一覧表示
+- [ ] T004: 過去エントリの閲覧・編集・削除
+- [ ] T005: 起動時に storage.local から全状態を復元
+- [ ] T006: _locales ja/en を chrome.i18n で全UIに適用
+- [ ] T007: Premiumゲート(7日トライアル + Stripe Checkout URL)。無料は直近7日、Premiumで無制限+絵文字パック+月表示
+- [ ] T008: npm run build を通し ts/lint を解消
+- [ ] T009: release/picture-diary.zip 生成(node_modules除外)
+- [ ] T010: legal/PRIVACY.md と TERMS.md 作成(外部通信なし・データ収集なし・医療効果を主張しない)
