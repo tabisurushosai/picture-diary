@@ -499,4 +499,13 @@ function renderPopup(state: DiaryState): void {
   root.replaceChildren(shell);
 }
 
-renderPopup(diaryState);
+async function initializePopup(): Promise<void> {
+  const entriesByDate = await store.get<DiaryEntriesByDate>(diaryEntriesStorageKey);
+
+  diaryState = createDiaryStateFromEntries(entriesByDate);
+  editingEntryDate = "";
+  statusMessage = "";
+  renderPopup(diaryState);
+}
+
+void initializePopup();

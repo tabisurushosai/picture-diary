@@ -4,7 +4,7 @@
 - [x] T002: 今日のエントリ作成(絵文字複数+ひとこと)を実装
 - [x] T003: 日付ごとに chrome.storage.local へ保存・一覧表示
 - [x] T004: 過去エントリの閲覧・編集・削除
-- [ ] T005: 起動時に storage.local から全状態を復元
+- [x] T005: 起動時に storage.local から全状態を復元
 - [ ] T006: _locales ja/en を chrome.i18n で全UIに適用
 - [ ] T007: Premiumゲート(7日トライアル + Stripe Checkout URL)。無料は直近7日、Premiumで無制限+絵文字パック+月表示
 - [ ] T008: npm run build を通し ts/lint を解消
