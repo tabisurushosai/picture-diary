@@ -72,6 +72,13 @@ export function upsertEntryByDate(entriesByDate: DiaryEntriesByDate | null, entr
   };
 }
 
+export function deleteEntryByDate(entriesByDate: DiaryEntriesByDate | null, date: string): DiaryEntriesByDate {
+  const nextEntriesByDate = { ...(entriesByDate ?? {}) };
+  delete nextEntriesByDate[date];
+
+  return nextEntriesByDate;
+}
+
 const defaultTodayEntry: DiaryEntry = {
   date: getLocalDateKey(),
   emojis: ["😊", "🌤️", "🍙"],
@@ -107,6 +114,14 @@ export function createTodayEntry(input: TodayEntryInput, date = defaultTodayEntr
     emojis: [...new Set(input.emojis.filter((emoji) => emoji.length > 0))],
     note: input.note.trim().slice(0, 80),
   };
+}
+
+export function updateEntryByDate(
+  entriesByDate: DiaryEntriesByDate | null,
+  date: string,
+  input: TodayEntryInput,
+): DiaryEntriesByDate {
+  return upsertEntryByDate(entriesByDate, createTodayEntry(input, date));
 }
 
 export function updateTodayEntry(state: DiaryState, input: TodayEntryInput): DiaryState {

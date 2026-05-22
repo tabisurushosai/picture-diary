@@ -1,8 +1,10 @@
 import {
   createInitialDiaryState,
   createDiaryStateFromEntries,
+  deleteEntryByDate,
   diaryEntriesStorageKey,
   getEntryNoteText,
+  updateEntryByDate,
   updateTodayEntry,
   upsertEntryByDate,
   type DiaryEntriesByDate,
@@ -13,6 +15,7 @@ import { store } from "./storage";
 
 let diaryState = createInitialDiaryState();
 let statusMessage = "";
+let editingEntryDate = "";
 
 function createElement<K extends keyof HTMLElementTagNameMap>(
   tagName: K,
@@ -96,6 +99,7 @@ function renderTodaySection(entry: DiaryEntry, emojiChoices: string[], message: 
     await store.set(diaryEntriesStorageKey, entriesByDate);
 
     diaryState = createDiaryStateFromEntries(entriesByDate, nextState.todayEntry.date);
+    editingEntryDate = "";
     statusMessage = "記録しました";
     renderPopup(diaryState);
   });
@@ -111,7 +115,16 @@ function renderTodaySection(entry: DiaryEntry, emojiChoices: string[], message: 
   return section;
 }
 
-function renderEntryCard(entry: DiaryEntry): HTMLElement {
+async function persistEntriesByDate(entriesByDate: DiaryEntriesByDate): Promise<void> {
+  if (Object.keys(entriesByDate).length === 0) {
+    await store.remove(diaryEntriesStorageKey);
+    return;
+  }
+
+  await store.set(diaryEntriesStorageKey, entriesByDate);
+}
+
+function renderEntryCard(entry: DiaryEntry, emojiChoices?: string[]): HTMLElement {
   const article = createElement("article", "entry-card");
   const date = createElement("time", "entry-date", entry.date);
   const emojis = createElement("div", "entry-emojis", entry.emojis.join(" "));
@@ -119,10 +132,103 @@ function renderEntryCard(entry: DiaryEntry): HTMLElement {
 
   article.append(date, emojis, note);
 
+  if (emojiChoices) {
+    const actions = createElement("div", "entry-actions");
+    const editButton = createElement("button", "secondary-button", "編集");
+    const deleteButton = createElement("button", "danger-button", "削除");
+
+    editButton.type = "button";
+    deleteButton.type = "button";
+
+    editButton.addEventListener("click", () => {
+      editingEntryDate = entry.date;
+      statusMessage = "";
+      renderPopup(diaryState);
+    });
+
+    deleteButton.addEventListener("click", async () => {
+      const currentEntriesByDate = await store.get<DiaryEntriesByDate>(diaryEntriesStorageKey);
+      const entriesByDate = deleteEntryByDate(currentEntriesByDate, entry.date);
+
+      await persistEntriesByDate(entriesByDate);
+
+      diaryState = createDiaryStateFromEntries(entriesByDate);
+      editingEntryDate = "";
+      statusMessage = "削除しました";
+      renderPopup(diaryState);
+    });
+
+    actions.append(editButton, deleteButton);
+    article.append(actions);
+  }
+
   return article;
 }
 
-function renderPastSection(entries: DiaryEntry[]): HTMLElement {
+function renderEntryEditForm(entry: DiaryEntry, emojiChoices: string[]): HTMLElement {
+  const form = createElement("form", "entry-form entry-edit-form");
+  const noteLabel = createElement("label", "note-label", "ひとこと");
+  const noteInput = createElement("textarea");
+  const actions = createElement("div", "entry-actions");
+  const saveButton = createElement("button", "primary-button", "保存");
+  const cancelButton = createElement("button", "secondary-button", "キャンセル");
+
+  noteInput.name = "note";
+  noteInput.rows = 3;
+  noteInput.maxLength = 80;
+  noteInput.placeholder = "きょうあったこと";
+  noteInput.value = entry.note;
+
+  saveButton.type = "submit";
+  cancelButton.type = "button";
+
+  cancelButton.addEventListener("click", () => {
+    editingEntryDate = "";
+    statusMessage = "";
+    renderPopup(diaryState);
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const formData = new FormData(form);
+    const emojis = formData.getAll("emoji").filter((value): value is string => typeof value === "string");
+    const note = formData.get("note");
+    const currentEntriesByDate = await store.get<DiaryEntriesByDate>(diaryEntriesStorageKey);
+    const entriesByDate = updateEntryByDate(currentEntriesByDate, entry.date, {
+      emojis,
+      note: typeof note === "string" ? note : "",
+    });
+
+    await persistEntriesByDate(entriesByDate);
+
+    diaryState = createDiaryStateFromEntries(entriesByDate);
+    editingEntryDate = "";
+    statusMessage = "更新しました";
+    renderPopup(diaryState);
+  });
+
+  noteLabel.append(noteInput);
+  actions.append(saveButton, cancelButton);
+  form.append(renderEmojiPicker(emojiChoices, entry.emojis), noteLabel, actions);
+
+  return form;
+}
+
+function renderEditableEntry(entry: DiaryEntry, emojiChoices: string[]): HTMLElement {
+  if (entry.date === editingEntryDate) {
+    const article = createElement("article", "entry-card entry-card-editing");
+    const date = createElement("time", "entry-date", entry.date);
+
+    article.append(date, renderEntryEditForm(entry, emojiChoices));
+
+    return article;
+  }
+
+  return renderEntryCard(entry, emojiChoices);
+}
+
+function renderPastSection(entries: DiaryEntry[], emojiChoices: string[]): HTMLElement {
   const section = createElement("section", "panel");
   const heading = createElement("h2", undefined, "過去の記録");
   const list = createElement("div", "entry-list");
@@ -131,7 +237,7 @@ function renderPastSection(entries: DiaryEntry[]): HTMLElement {
     list.append(createElement("p", "empty-state", "まだ過去の記録はありません"));
   } else {
     for (const entry of entries) {
-      list.append(renderEntryCard(entry));
+      list.append(renderEditableEntry(entry, emojiChoices));
     }
   }
 
@@ -283,6 +389,25 @@ function applyStyles(): void {
       cursor: pointer;
     }
 
+    .secondary-button,
+    .danger-button {
+      min-width: 64px;
+      border: 1px solid #c9cbc4;
+      border-radius: 8px;
+      padding: 7px 10px;
+      background: #ffffff;
+      color: #30362f;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .danger-button {
+      border-color: #dbb9b2;
+      color: #9b2d20;
+    }
+
     .form-status {
       color: #2f6f5e;
       font-size: 12px;
@@ -305,6 +430,10 @@ function applyStyles(): void {
       background: #f4f6f3;
     }
 
+    .entry-card-editing {
+      background: #fbfaf6;
+    }
+
     .entry-date {
       color: #4e564b;
       font-size: 12px;
@@ -324,6 +453,17 @@ function applyStyles(): void {
       font-size: 13px;
       line-height: 1.5;
       overflow-wrap: anywhere;
+    }
+
+    .entry-actions {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+
+    .entry-edit-form {
+      grid-column: 1 / -1;
     }
 
     .empty-state {
@@ -351,7 +491,11 @@ function renderPopup(state: DiaryState): void {
   const description = createElement("p", undefined, "絵文字とひとことで、今日をのこす");
 
   header.append(title, description);
-  shell.append(header, renderTodaySection(state.todayEntry, state.emojiChoices, statusMessage), renderPastSection(state.pastEntries));
+  shell.append(
+    header,
+    renderTodaySection(state.todayEntry, state.emojiChoices, statusMessage),
+    renderPastSection(state.pastEntries, state.emojiChoices),
+  );
   root.replaceChildren(shell);
 }
 
