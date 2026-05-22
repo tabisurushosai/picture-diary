@@ -1,4 +1,5 @@
 import {
+  createMonthEntryDays,
   createInitialDiaryState,
   createDiaryStateFromEntries,
   deleteEntryByDate,
@@ -11,9 +12,19 @@ import {
   type DiaryEntry,
   type DiaryState,
 } from "./core/diary";
+import {
+  createInitialPremiumState,
+  getPremiumStatus,
+  premiumStorageKey,
+  startTrial,
+  stripeCheckoutUrl,
+  type PremiumState,
+} from "./core/premium";
 import { store } from "./storage";
 
 let diaryState = createInitialDiaryState();
+let premiumState = createInitialPremiumState();
+let entriesByDateState: DiaryEntriesByDate | null = null;
 let statusMessage = "";
 let editingEntryDate = "";
 
@@ -33,10 +44,26 @@ type MessageKey =
   | "emptyNote"
   | "savedStatus"
   | "deletedStatus"
-  | "updatedStatus";
+  | "updatedStatus"
+  | "premiumHeading"
+  | "premiumFreeStatus"
+  | "premiumTrialStatus"
+  | "premiumActiveStatus"
+  | "premiumBenefits"
+  | "startTrialButton"
+  | "checkoutButton"
+  | "monthHeading";
 
 function t(key: MessageKey): string {
   return chrome.i18n.getMessage(key);
+}
+
+function getCurrentPremiumStatus() {
+  return getPremiumStatus(premiumState);
+}
+
+function createDiaryState(entriesByDate: DiaryEntriesByDate | null, todayDate?: string): DiaryState {
+  return createDiaryStateFromEntries(entriesByDate, todayDate, getCurrentPremiumStatus().accessLevel);
 }
 
 function createElement<K extends keyof HTMLElementTagNameMap>(
@@ -120,7 +147,8 @@ function renderTodaySection(entry: DiaryEntry, emojiChoices: string[], message: 
 
     await store.set(diaryEntriesStorageKey, entriesByDate);
 
-    diaryState = createDiaryStateFromEntries(entriesByDate, nextState.todayEntry.date);
+    entriesByDateState = entriesByDate;
+    diaryState = createDiaryState(entriesByDate, nextState.todayEntry.date);
     editingEntryDate = "";
     statusMessage = t("savedStatus");
     renderPopup(diaryState);
@@ -174,7 +202,8 @@ function renderEntryCard(entry: DiaryEntry, emojiChoices?: string[]): HTMLElemen
 
       await persistEntriesByDate(entriesByDate);
 
-      diaryState = createDiaryStateFromEntries(entriesByDate);
+      entriesByDateState = entriesByDate;
+      diaryState = createDiaryState(entriesByDate);
       editingEntryDate = "";
       statusMessage = t("deletedStatus");
       renderPopup(diaryState);
@@ -224,7 +253,8 @@ function renderEntryEditForm(entry: DiaryEntry, emojiChoices: string[]): HTMLEle
 
     await persistEntriesByDate(entriesByDate);
 
-    diaryState = createDiaryStateFromEntries(entriesByDate);
+    entriesByDateState = entriesByDate;
+    diaryState = createDiaryState(entriesByDate);
     editingEntryDate = "";
     statusMessage = t("updatedStatus");
     renderPopup(diaryState);
@@ -264,6 +294,70 @@ function renderPastSection(entries: DiaryEntry[], emojiChoices: string[]): HTMLE
   }
 
   section.append(heading, list);
+
+  return section;
+}
+
+function renderPremiumSection(): HTMLElement {
+  const status = getCurrentPremiumStatus();
+  const section = createElement("section", "panel premium-panel");
+  const heading = createElement("h2", undefined, t("premiumHeading"));
+  const statusText =
+    status.kind === "premium"
+      ? t("premiumActiveStatus")
+      : status.kind === "trial"
+        ? t("premiumTrialStatus").replace("$days$", String(status.trialDaysRemaining))
+        : t("premiumFreeStatus");
+  const statusNode = createElement("p", "premium-status", statusText);
+  const benefits = createElement("p", "premium-benefits", t("premiumBenefits"));
+  const actions = createElement("div", "entry-actions");
+  const checkoutButton = createElement("button", "secondary-button", t("checkoutButton"));
+
+  checkoutButton.type = "button";
+  checkoutButton.addEventListener("click", () => {
+    globalThis.open(stripeCheckoutUrl, "_blank", "noopener");
+  });
+
+  actions.append(checkoutButton);
+
+  if (status.kind === "free") {
+    const trialButton = createElement("button", "primary-button", t("startTrialButton"));
+
+    trialButton.type = "button";
+    trialButton.addEventListener("click", async () => {
+      premiumState = startTrial(premiumState);
+      await store.set(premiumStorageKey, premiumState);
+
+      diaryState = createDiaryState(entriesByDateState);
+      editingEntryDate = "";
+      statusMessage = "";
+      renderPopup(diaryState);
+    });
+
+    actions.prepend(trialButton);
+  }
+
+  section.append(heading, statusNode, benefits, actions);
+
+  return section;
+}
+
+function renderMonthSection(entriesByDate: DiaryEntriesByDate | null): HTMLElement {
+  const section = createElement("section", "panel");
+  const heading = createElement("h2", undefined, t("monthHeading"));
+  const monthGrid = createElement("div", "month-grid");
+
+  for (const day of createMonthEntryDays(entriesByDate)) {
+    const dayCell = createElement("div", day.entry ? "month-day has-entry" : "month-day");
+    const dayNumber = createElement("span", "month-day-number", String(day.day));
+    const emojis = createElement("span", "month-day-emojis", day.entry ? day.entry.emojis.slice(0, 3).join("") : "");
+
+    dayCell.title = day.date;
+    dayCell.append(dayNumber, emojis);
+    monthGrid.append(dayCell);
+  }
+
+  section.append(heading, monthGrid);
 
   return section;
 }
@@ -437,6 +531,13 @@ function applyStyles(): void {
       line-height: 1.4;
     }
 
+    .premium-status,
+    .premium-benefits {
+      color: #4e564b;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
     .entry-list {
       display: grid;
       gap: 8px;
@@ -493,6 +594,43 @@ function applyStyles(): void {
       font-size: 13px;
       line-height: 1.5;
     }
+
+    .month-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+
+    .month-day {
+      display: grid;
+      align-content: space-between;
+      min-height: 34px;
+      border: 1px solid #e4e2da;
+      border-radius: 6px;
+      padding: 4px;
+      background: #fbfaf6;
+      overflow: hidden;
+    }
+
+    .month-day.has-entry {
+      border-color: #a9c7bd;
+      background: #eaf4f0;
+    }
+
+    .month-day-number {
+      color: #4e564b;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .month-day-emojis {
+      min-height: 14px;
+      font-size: 12px;
+      line-height: 1;
+      overflow: hidden;
+      white-space: nowrap;
+    }
   `;
 
   document.head.append(style);
@@ -514,18 +652,23 @@ function renderPopup(state: DiaryState): void {
   const description = createElement("p", undefined, t("appDescription"));
 
   header.append(title, description);
-  shell.append(
-    header,
-    renderTodaySection(state.todayEntry, state.emojiChoices, statusMessage),
-    renderPastSection(state.pastEntries, state.emojiChoices),
-  );
+  shell.append(header, renderPremiumSection(), renderTodaySection(state.todayEntry, state.emojiChoices, statusMessage));
+
+  if (getCurrentPremiumStatus().accessLevel === "premium") {
+    shell.append(renderMonthSection(entriesByDateState));
+  }
+
+  shell.append(renderPastSection(state.pastEntries, state.emojiChoices));
   root.replaceChildren(shell);
 }
 
 async function initializePopup(): Promise<void> {
   const entriesByDate = await store.get<DiaryEntriesByDate>(diaryEntriesStorageKey);
+  const savedPremiumState = await store.get<PremiumState>(premiumStorageKey);
 
-  diaryState = createDiaryStateFromEntries(entriesByDate);
+  entriesByDateState = entriesByDate;
+  premiumState = savedPremiumState ?? createInitialPremiumState();
+  diaryState = createDiaryState(entriesByDate);
   editingEntryDate = "";
   statusMessage = "";
   renderPopup(diaryState);

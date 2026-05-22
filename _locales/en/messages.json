@@ -16,5 +16,13 @@
   "emptyNote": { "message": "No note yet" },
   "savedStatus": { "message": "Entry saved" },
   "deletedStatus": { "message": "Entry deleted" },
-  "updatedStatus": { "message": "Entry updated" }
+  "updatedStatus": { "message": "Entry updated" },
+  "premiumHeading": { "message": "Premium" },
+  "premiumFreeStatus": { "message": "Free shows the most recent 7 days" },
+  "premiumTrialStatus": { "message": "Trial active: $days$ days left" },
+  "premiumActiveStatus": { "message": "Premium active: showing every entry" },
+  "premiumBenefits": { "message": "Premium adds unlimited history, extra emojis, and month view" },
+  "startTrialButton": { "message": "7-day trial" },
+  "checkoutButton": { "message": "Buy for $3" },
+  "monthHeading": { "message": "Month View" }
 }

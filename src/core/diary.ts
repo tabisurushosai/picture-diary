@@ -10,6 +10,14 @@ export type DiaryState = {
   emojiChoices: string[];
 };
 
+export type DiaryAccessLevel = "free" | "premium";
+
+export type MonthEntryDay = {
+  date: string;
+  day: number;
+  entry: DiaryEntry | null;
+};
+
 export type TodayEntryInput = {
   emojis: string[];
   note: string;
@@ -20,6 +28,8 @@ export type DiaryEntriesByDate = Record<string, DiaryEntry>;
 export const diaryEntriesStorageKey = "diaryEntriesByDate";
 
 const defaultEmojiChoices = ["😊", "😐", "😢", "🌤️", "🍙", "📚", "🎨", "🏃"];
+const premiumEmojiChoices = ["🎵", "🧩", "🌈", "⭐", "🌱", "🚲", "🧸", "🏖️"];
+const freeVisibleDays = 7;
 
 function createBlankEntry(date: string): DiaryEntry {
   return {
@@ -41,6 +51,13 @@ export function getLocalDateKey(now = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
+function getDateKeyDaysAgo(date: string, daysAgo: number): string {
+  const baseDate = new Date(`${date}T00:00:00`);
+  baseDate.setDate(baseDate.getDate() - daysAgo);
+
+  return getLocalDateKey(baseDate);
+}
+
 export function entriesToDiaryEntriesByDate(entries: DiaryEntry[]): DiaryEntriesByDate {
   return entries.reduce<DiaryEntriesByDate>((entriesByDate, entry) => {
     entriesByDate[entry.date] = {
@@ -59,6 +76,20 @@ export function getEntriesFromDiaryEntriesByDate(entriesByDate: DiaryEntriesByDa
   }
 
   return sortEntriesByDateDesc(Object.values(entriesByDate));
+}
+
+export function getVisibleEntriesForAccess(
+  entries: DiaryEntry[],
+  accessLevel: DiaryAccessLevel,
+  date = getLocalDateKey(),
+): DiaryEntry[] {
+  if (accessLevel === "premium") {
+    return sortEntriesByDateDesc(entries);
+  }
+
+  const oldestVisibleDate = getDateKeyDaysAgo(date, freeVisibleDays - 1);
+
+  return sortEntriesByDateDesc(entries.filter((entry) => entry.date >= oldestVisibleDate));
 }
 
 export function upsertEntryByDate(entriesByDate: DiaryEntriesByDate | null, entry: DiaryEntry): DiaryEntriesByDate {
@@ -93,7 +124,11 @@ export function createInitialDiaryState(date = getLocalDateKey()): DiaryState {
   };
 }
 
-export function createDiaryStateFromEntries(entriesByDate: DiaryEntriesByDate | null, date = getLocalDateKey()): DiaryState {
+export function createDiaryStateFromEntries(
+  entriesByDate: DiaryEntriesByDate | null,
+  date = getLocalDateKey(),
+  accessLevel: DiaryAccessLevel = "free",
+): DiaryState {
   const entries = getEntriesFromDiaryEntriesByDate(entriesByDate);
   const todayEntry = entriesByDate?.[date] ?? createBlankEntry(date);
 
@@ -103,8 +138,8 @@ export function createDiaryStateFromEntries(entriesByDate: DiaryEntriesByDate | 
       emojis: [...todayEntry.emojis],
       note: todayEntry.note,
     },
-    pastEntries: entries,
-    emojiChoices: [...defaultEmojiChoices],
+    pastEntries: getVisibleEntriesForAccess(entries, accessLevel, date),
+    emojiChoices: accessLevel === "premium" ? [...defaultEmojiChoices, ...premiumEmojiChoices] : [...defaultEmojiChoices],
   };
 }
 
@@ -137,4 +172,30 @@ export function updateTodayEntry(state: DiaryState, input: TodayEntryInput): Dia
 
 export function hasEntryNote(entry: DiaryEntry): boolean {
   return entry.note.length > 0;
+}
+
+export function createMonthEntryDays(
+  entriesByDate: DiaryEntriesByDate | null,
+  yearMonth = getLocalDateKey().slice(0, 7),
+): MonthEntryDay[] {
+  const [year, month] = yearMonth.split("-").map(Number);
+  const daysInMonth = new Date(year, month, 0).getDate();
+
+  return Array.from({ length: daysInMonth }, (_, index) => {
+    const day = index + 1;
+    const date = `${yearMonth}-${String(day).padStart(2, "0")}`;
+    const entry = entriesByDate?.[date] ?? null;
+
+    return {
+      date,
+      day,
+      entry: entry
+        ? {
+            date: entry.date,
+            emojis: [...entry.emojis],
+            note: entry.note,
+          }
+        : null,
+    };
+  });
 }

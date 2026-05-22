@@ -16,5 +16,13 @@
   "emptyNote": { "message": "ひとことはまだありません" },
   "savedStatus": { "message": "記録しました" },
   "deletedStatus": { "message": "削除しました" },
-  "updatedStatus": { "message": "更新しました" }
+  "updatedStatus": { "message": "更新しました" },
+  "premiumHeading": { "message": "Premium" },
+  "premiumFreeStatus": { "message": "無料では直近7日分を表示します" },
+  "premiumTrialStatus": { "message": "トライアル中: あと$days$日" },
+  "premiumActiveStatus": { "message": "Premium有効: すべての記録を表示します" },
+  "premiumBenefits": { "message": "Premiumは無制限表示、追加えもじ、月表示が使えます" },
+  "startTrialButton": { "message": "7日トライアル" },
+  "checkoutButton": { "message": "$3で購入" },
+  "monthHeading": { "message": "月表示" }
 }
