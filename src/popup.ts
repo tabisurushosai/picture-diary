@@ -1,18 +1,4 @@
-type DiaryPreview = {
-  date: string;
-  emojis: string[];
-  note: string;
-};
-
-const todayPreview: DiaryPreview = {
-  date: "今日",
-  emojis: ["😊", "🌤️", "🍙"],
-  note: "",
-};
-
-const pastPreviews: DiaryPreview[] = [];
-
-const emojiChoices = ["😊", "😐", "😢", "🌤️", "🍙", "📚", "🎨", "🏃"];
+import { createInitialDiaryState, getEntryNoteText, type DiaryEntry, type DiaryState } from "./core/diary";
 
 function createElement<K extends keyof HTMLElementTagNameMap>(
   tagName: K,
@@ -32,7 +18,7 @@ function createElement<K extends keyof HTMLElementTagNameMap>(
   return element;
 }
 
-function renderEmojiPicker(): HTMLElement {
+function renderEmojiPicker(emojiChoices: string[]): HTMLElement {
   const fieldset = createElement("fieldset", "emoji-picker");
   const legend = createElement("legend", undefined, "えもじ");
 
@@ -53,7 +39,7 @@ function renderEmojiPicker(): HTMLElement {
   return fieldset;
 }
 
-function renderTodaySection(entry: DiaryPreview): HTMLElement {
+function renderTodaySection(entry: DiaryEntry, emojiChoices: string[]): HTMLElement {
   const section = createElement("section", "panel");
   const heading = createElement("h2", undefined, "今日の記録");
   const form = createElement("form", "entry-form");
@@ -72,24 +58,24 @@ function renderTodaySection(entry: DiaryPreview): HTMLElement {
 
   noteLabel.append(noteInput);
   actionRow.append(saveButton);
-  form.append(renderEmojiPicker(), noteLabel, actionRow);
+  form.append(renderEmojiPicker(emojiChoices), noteLabel, actionRow);
   section.append(heading, form);
 
   return section;
 }
 
-function renderEntryCard(entry: DiaryPreview): HTMLElement {
+function renderEntryCard(entry: DiaryEntry): HTMLElement {
   const article = createElement("article", "entry-card");
   const date = createElement("time", "entry-date", entry.date);
   const emojis = createElement("div", "entry-emojis", entry.emojis.join(" "));
-  const note = createElement("p", "entry-note", entry.note || "ひとことはまだありません");
+  const note = createElement("p", "entry-note", getEntryNoteText(entry));
 
   article.append(date, emojis, note);
 
   return article;
 }
 
-function renderPastSection(entries: DiaryPreview[]): HTMLElement {
+function renderPastSection(entries: DiaryEntry[]): HTMLElement {
   const section = createElement("section", "panel");
   const heading = createElement("h2", undefined, "過去の記録");
   const list = createElement("div", "entry-list");
@@ -285,7 +271,7 @@ function applyStyles(): void {
   document.head.append(style);
 }
 
-function renderPopup(): void {
+function renderPopup(state: DiaryState): void {
   const root = document.querySelector<HTMLElement>("#app");
 
   if (!root) {
@@ -300,8 +286,8 @@ function renderPopup(): void {
   const description = createElement("p", undefined, "絵文字とひとことで、今日をのこす");
 
   header.append(title, description);
-  shell.append(header, renderTodaySection(todayPreview), renderPastSection(pastPreviews));
+  shell.append(header, renderTodaySection(state.todayEntry, state.emojiChoices), renderPastSection(state.pastEntries));
   root.replaceChildren(shell);
 }
 
-renderPopup();
+renderPopup(createInitialDiaryState());
