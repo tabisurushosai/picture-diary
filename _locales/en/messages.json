@@ -1,1 +1,20 @@
-{ "extName": { "message": "Picture Diary" }, "extDesc": { "message": "Log today's events with emojis and a short note. A picture diary kids can keep with few words." } }
+{
+  "extName": { "message": "Picture Diary" },
+  "extDesc": { "message": "Log today's events with emojis and a short note. A picture diary kids can keep with few words." },
+  "appTitle": { "message": "Picture Diary" },
+  "appDescription": { "message": "Save today with emojis and one short note" },
+  "todayHeading": { "message": "Today's Entry" },
+  "pastHeading": { "message": "Past Entries" },
+  "emojiLegend": { "message": "Emojis" },
+  "noteLabel": { "message": "Short note" },
+  "notePlaceholder": { "message": "What happened today" },
+  "saveButton": { "message": "Save" },
+  "editButton": { "message": "Edit" },
+  "deleteButton": { "message": "Delete" },
+  "cancelButton": { "message": "Cancel" },
+  "emptyPastEntries": { "message": "No past entries yet" },
+  "emptyNote": { "message": "No note yet" },
+  "savedStatus": { "message": "Entry saved" },
+  "deletedStatus": { "message": "Entry deleted" },
+  "updatedStatus": { "message": "Entry updated" }
+}

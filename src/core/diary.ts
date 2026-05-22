@@ -135,6 +135,6 @@ export function updateTodayEntry(state: DiaryState, input: TodayEntryInput): Dia
   };
 }
 
-export function getEntryNoteText(entry: DiaryEntry): string {
-  return entry.note || "ひとことはまだありません";
+export function hasEntryNote(entry: DiaryEntry): boolean {
+  return entry.note.length > 0;
 }

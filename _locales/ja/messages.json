@@ -1,1 +1,20 @@
-{ "extName": { "message": "えにっき" }, "extDesc": { "message": "今日あったことを絵文字とひとことで記録。日付ごとに見返せる、ことばが少なくても残せる日記。" } }
+{
+  "extName": { "message": "えにっき" },
+  "extDesc": { "message": "今日あったことを絵文字とひとことで記録。日付ごとに見返せる、ことばが少なくても残せる日記。" },
+  "appTitle": { "message": "えにっき" },
+  "appDescription": { "message": "絵文字とひとことで、今日をのこす" },
+  "todayHeading": { "message": "今日の記録" },
+  "pastHeading": { "message": "過去の記録" },
+  "emojiLegend": { "message": "えもじ" },
+  "noteLabel": { "message": "ひとこと" },
+  "notePlaceholder": { "message": "きょうあったこと" },
+  "saveButton": { "message": "保存" },
+  "editButton": { "message": "編集" },
+  "deleteButton": { "message": "削除" },
+  "cancelButton": { "message": "キャンセル" },
+  "emptyPastEntries": { "message": "まだ過去の記録はありません" },
+  "emptyNote": { "message": "ひとことはまだありません" },
+  "savedStatus": { "message": "記録しました" },
+  "deletedStatus": { "message": "削除しました" },
+  "updatedStatus": { "message": "更新しました" }
+}

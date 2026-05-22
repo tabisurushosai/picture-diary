@@ -5,7 +5,7 @@
 - [x] T003: 日付ごとに chrome.storage.local へ保存・一覧表示
 - [x] T004: 過去エントリの閲覧・編集・削除
 - [x] T005: 起動時に storage.local から全状態を復元
-- [ ] T006: _locales ja/en を chrome.i18n で全UIに適用
+- [x] T006: _locales ja/en を chrome.i18n で全UIに適用
 - [ ] T007: Premiumゲート(7日トライアル + Stripe Checkout URL)。無料は直近7日、Premiumで無制限+絵文字パック+月表示
 - [ ] T008: npm run build を通し ts/lint を解消
 - [ ] T009: release/picture-diary.zip 生成(node_modules除外)

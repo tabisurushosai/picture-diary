@@ -3,7 +3,7 @@ import {
   createDiaryStateFromEntries,
   deleteEntryByDate,
   diaryEntriesStorageKey,
-  getEntryNoteText,
+  hasEntryNote,
   updateEntryByDate,
   updateTodayEntry,
   upsertEntryByDate,
@@ -16,6 +16,28 @@ import { store } from "./storage";
 let diaryState = createInitialDiaryState();
 let statusMessage = "";
 let editingEntryDate = "";
+
+type MessageKey =
+  | "appTitle"
+  | "appDescription"
+  | "todayHeading"
+  | "pastHeading"
+  | "emojiLegend"
+  | "noteLabel"
+  | "notePlaceholder"
+  | "saveButton"
+  | "editButton"
+  | "deleteButton"
+  | "cancelButton"
+  | "emptyPastEntries"
+  | "emptyNote"
+  | "savedStatus"
+  | "deletedStatus"
+  | "updatedStatus";
+
+function t(key: MessageKey): string {
+  return chrome.i18n.getMessage(key);
+}
 
 function createElement<K extends keyof HTMLElementTagNameMap>(
   tagName: K,
@@ -37,7 +59,7 @@ function createElement<K extends keyof HTMLElementTagNameMap>(
 
 function renderEmojiPicker(emojiChoices: string[], selectedEmojis: string[]): HTMLElement {
   const fieldset = createElement("fieldset", "emoji-picker");
-  const legend = createElement("legend", undefined, "えもじ");
+  const legend = createElement("legend", undefined, t("emojiLegend"));
   const selectedEmojiSet = new Set(selectedEmojis);
 
   fieldset.append(legend);
@@ -60,18 +82,18 @@ function renderEmojiPicker(emojiChoices: string[], selectedEmojis: string[]): HT
 
 function renderTodaySection(entry: DiaryEntry, emojiChoices: string[], message: string): HTMLElement {
   const section = createElement("section", "panel");
-  const heading = createElement("h2", undefined, "今日の記録");
+  const heading = createElement("h2", undefined, t("todayHeading"));
   const form = createElement("form", "entry-form");
-  const noteLabel = createElement("label", "note-label", "ひとこと");
+  const noteLabel = createElement("label", "note-label", t("noteLabel"));
   const noteInput = createElement("textarea");
   const actionRow = createElement("div", "action-row");
-  const saveButton = createElement("button", "primary-button", "保存");
+  const saveButton = createElement("button", "primary-button", t("saveButton"));
   const preview = renderEntryCard(entry);
 
   noteInput.name = "note";
   noteInput.rows = 3;
   noteInput.maxLength = 80;
-  noteInput.placeholder = "きょうあったこと";
+  noteInput.placeholder = t("notePlaceholder");
   noteInput.value = entry.note;
 
   saveButton.type = "submit";
@@ -100,7 +122,7 @@ function renderTodaySection(entry: DiaryEntry, emojiChoices: string[], message: 
 
     diaryState = createDiaryStateFromEntries(entriesByDate, nextState.todayEntry.date);
     editingEntryDate = "";
-    statusMessage = "記録しました";
+    statusMessage = t("savedStatus");
     renderPopup(diaryState);
   });
 
@@ -128,14 +150,14 @@ function renderEntryCard(entry: DiaryEntry, emojiChoices?: string[]): HTMLElemen
   const article = createElement("article", "entry-card");
   const date = createElement("time", "entry-date", entry.date);
   const emojis = createElement("div", "entry-emojis", entry.emojis.join(" "));
-  const note = createElement("p", "entry-note", getEntryNoteText(entry));
+  const note = createElement("p", "entry-note", hasEntryNote(entry) ? entry.note : t("emptyNote"));
 
   article.append(date, emojis, note);
 
   if (emojiChoices) {
     const actions = createElement("div", "entry-actions");
-    const editButton = createElement("button", "secondary-button", "編集");
-    const deleteButton = createElement("button", "danger-button", "削除");
+    const editButton = createElement("button", "secondary-button", t("editButton"));
+    const deleteButton = createElement("button", "danger-button", t("deleteButton"));
 
     editButton.type = "button";
     deleteButton.type = "button";
@@ -154,7 +176,7 @@ function renderEntryCard(entry: DiaryEntry, emojiChoices?: string[]): HTMLElemen
 
       diaryState = createDiaryStateFromEntries(entriesByDate);
       editingEntryDate = "";
-      statusMessage = "削除しました";
+      statusMessage = t("deletedStatus");
       renderPopup(diaryState);
     });
 
@@ -167,16 +189,16 @@ function renderEntryCard(entry: DiaryEntry, emojiChoices?: string[]): HTMLElemen
 
 function renderEntryEditForm(entry: DiaryEntry, emojiChoices: string[]): HTMLElement {
   const form = createElement("form", "entry-form entry-edit-form");
-  const noteLabel = createElement("label", "note-label", "ひとこと");
+  const noteLabel = createElement("label", "note-label", t("noteLabel"));
   const noteInput = createElement("textarea");
   const actions = createElement("div", "entry-actions");
-  const saveButton = createElement("button", "primary-button", "保存");
-  const cancelButton = createElement("button", "secondary-button", "キャンセル");
+  const saveButton = createElement("button", "primary-button", t("saveButton"));
+  const cancelButton = createElement("button", "secondary-button", t("cancelButton"));
 
   noteInput.name = "note";
   noteInput.rows = 3;
   noteInput.maxLength = 80;
-  noteInput.placeholder = "きょうあったこと";
+  noteInput.placeholder = t("notePlaceholder");
   noteInput.value = entry.note;
 
   saveButton.type = "submit";
@@ -204,7 +226,7 @@ function renderEntryEditForm(entry: DiaryEntry, emojiChoices: string[]): HTMLEle
 
     diaryState = createDiaryStateFromEntries(entriesByDate);
     editingEntryDate = "";
-    statusMessage = "更新しました";
+    statusMessage = t("updatedStatus");
     renderPopup(diaryState);
   });
 
@@ -230,11 +252,11 @@ function renderEditableEntry(entry: DiaryEntry, emojiChoices: string[]): HTMLEle
 
 function renderPastSection(entries: DiaryEntry[], emojiChoices: string[]): HTMLElement {
   const section = createElement("section", "panel");
-  const heading = createElement("h2", undefined, "過去の記録");
+  const heading = createElement("h2", undefined, t("pastHeading"));
   const list = createElement("div", "entry-list");
 
   if (entries.length === 0) {
-    list.append(createElement("p", "empty-state", "まだ過去の記録はありません"));
+    list.append(createElement("p", "empty-state", t("emptyPastEntries")));
   } else {
     for (const entry of entries) {
       list.append(renderEditableEntry(entry, emojiChoices));
@@ -484,11 +506,12 @@ function renderPopup(state: DiaryState): void {
   }
 
   applyStyles();
+  document.title = t("appTitle");
 
   const shell = createElement("main", "app-shell");
   const header = createElement("header", "app-header");
-  const title = createElement("h1", undefined, "えにっき");
-  const description = createElement("p", undefined, "絵文字とひとことで、今日をのこす");
+  const title = createElement("h1", undefined, t("appTitle"));
+  const description = createElement("p", undefined, t("appDescription"));
 
   header.append(title, description);
   shell.append(
