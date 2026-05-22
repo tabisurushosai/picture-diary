@@ -1,10 +1,15 @@
 import {
   createInitialDiaryState,
+  createDiaryStateFromEntries,
+  diaryEntriesStorageKey,
   getEntryNoteText,
   updateTodayEntry,
+  upsertEntryByDate,
+  type DiaryEntriesByDate,
   type DiaryEntry,
   type DiaryState,
 } from "./core/diary";
+import { store } from "./storage";
 
 let diaryState = createInitialDiaryState();
 let statusMessage = "";
@@ -72,17 +77,25 @@ function renderTodaySection(entry: DiaryEntry, emojiChoices: string[], message: 
   actionRow.append(saveButton);
   form.append(renderEmojiPicker(emojiChoices, entry.emojis), noteLabel, actionRow);
 
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
 
     const formData = new FormData(form);
     const emojis = formData.getAll("emoji").filter((value): value is string => typeof value === "string");
     const note = formData.get("note");
 
-    diaryState = updateTodayEntry(diaryState, {
+    const nextState = updateTodayEntry(diaryState, {
       emojis,
       note: typeof note === "string" ? note : "",
     });
+    const entriesByDate = upsertEntryByDate(
+      await store.get<DiaryEntriesByDate>(diaryEntriesStorageKey),
+      nextState.todayEntry,
+    );
+
+    await store.set(diaryEntriesStorageKey, entriesByDate);
+
+    diaryState = createDiaryStateFromEntries(entriesByDate, nextState.todayEntry.date);
     statusMessage = "記録しました";
     renderPopup(diaryState);
   });

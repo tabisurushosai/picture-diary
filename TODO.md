@@ -2,7 +2,7 @@
 - [x] T001: src/popup.ts に popup骨格(今日の記録 + 過去一覧)を構築
 - [x] T1B: 保存は src/storage.ts の store(get/set/remove)経由に統一し、状態・ロジックは src/core/ に chrome.*/DOM 非依存で分離する(将来PWA移植のため)
 - [x] T002: 今日のエントリ作成(絵文字複数+ひとこと)を実装
-- [ ] T003: 日付ごとに chrome.storage.local へ保存・一覧表示
+- [x] T003: 日付ごとに chrome.storage.local へ保存・一覧表示
 - [ ] T004: 過去エントリの閲覧・編集・削除
 - [ ] T005: 起動時に storage.local から全状態を復元
 - [ ] T006: _locales ja/en を chrome.i18n で全UIに適用

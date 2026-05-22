@@ -15,21 +15,88 @@ export type TodayEntryInput = {
   note: string;
 };
 
+export type DiaryEntriesByDate = Record<string, DiaryEntry>;
+
+export const diaryEntriesStorageKey = "diaryEntriesByDate";
+
 const defaultEmojiChoices = ["😊", "😐", "😢", "🌤️", "🍙", "📚", "🎨", "🏃"];
 
+function createBlankEntry(date: string): DiaryEntry {
+  return {
+    date,
+    emojis: ["😊", "🌤️", "🍙"],
+    note: "",
+  };
+}
+
+function sortEntriesByDateDesc(entries: DiaryEntry[]): DiaryEntry[] {
+  return [...entries].sort((a, b) => b.date.localeCompare(a.date));
+}
+
+export function getLocalDateKey(now = new Date()): string {
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+export function entriesToDiaryEntriesByDate(entries: DiaryEntry[]): DiaryEntriesByDate {
+  return entries.reduce<DiaryEntriesByDate>((entriesByDate, entry) => {
+    entriesByDate[entry.date] = {
+      date: entry.date,
+      emojis: [...entry.emojis],
+      note: entry.note,
+    };
+
+    return entriesByDate;
+  }, {});
+}
+
+export function getEntriesFromDiaryEntriesByDate(entriesByDate: DiaryEntriesByDate | null): DiaryEntry[] {
+  if (!entriesByDate) {
+    return [];
+  }
+
+  return sortEntriesByDateDesc(Object.values(entriesByDate));
+}
+
+export function upsertEntryByDate(entriesByDate: DiaryEntriesByDate | null, entry: DiaryEntry): DiaryEntriesByDate {
+  return {
+    ...(entriesByDate ?? {}),
+    [entry.date]: {
+      date: entry.date,
+      emojis: [...entry.emojis],
+      note: entry.note,
+    },
+  };
+}
+
 const defaultTodayEntry: DiaryEntry = {
-  date: "今日",
+  date: getLocalDateKey(),
   emojis: ["😊", "🌤️", "🍙"],
   note: "",
 };
 
-export function createInitialDiaryState(): DiaryState {
+export function createInitialDiaryState(date = getLocalDateKey()): DiaryState {
+  return {
+    todayEntry: createBlankEntry(date),
+    pastEntries: [],
+    emojiChoices: [...defaultEmojiChoices],
+  };
+}
+
+export function createDiaryStateFromEntries(entriesByDate: DiaryEntriesByDate | null, date = getLocalDateKey()): DiaryState {
+  const entries = getEntriesFromDiaryEntriesByDate(entriesByDate);
+  const todayEntry = entriesByDate?.[date] ?? createBlankEntry(date);
+
   return {
     todayEntry: {
-      ...defaultTodayEntry,
-      emojis: [...defaultTodayEntry.emojis],
+      date: todayEntry.date,
+      emojis: [...todayEntry.emojis],
+      note: todayEntry.note,
     },
-    pastEntries: [],
+    pastEntries: entries,
     emojiChoices: [...defaultEmojiChoices],
   };
 }
@@ -43,10 +110,12 @@ export function createTodayEntry(input: TodayEntryInput, date = defaultTodayEntr
 }
 
 export function updateTodayEntry(state: DiaryState, input: TodayEntryInput): DiaryState {
+  const todayEntry = createTodayEntry(input, state.todayEntry.date);
+
   return {
     ...state,
-    todayEntry: createTodayEntry(input, state.todayEntry.date),
-    pastEntries: [...state.pastEntries],
+    todayEntry,
+    pastEntries: getEntriesFromDiaryEntriesByDate(upsertEntryByDate(entriesToDiaryEntriesByDate(state.pastEntries), todayEntry)),
     emojiChoices: [...state.emojiChoices],
   };
 }
