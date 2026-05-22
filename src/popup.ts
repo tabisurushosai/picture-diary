@@ -1,4 +1,13 @@
-import { createInitialDiaryState, getEntryNoteText, type DiaryEntry, type DiaryState } from "./core/diary";
+import {
+  createInitialDiaryState,
+  getEntryNoteText,
+  updateTodayEntry,
+  type DiaryEntry,
+  type DiaryState,
+} from "./core/diary";
+
+let diaryState = createInitialDiaryState();
+let statusMessage = "";
 
 function createElement<K extends keyof HTMLElementTagNameMap>(
   tagName: K,
@@ -18,9 +27,10 @@ function createElement<K extends keyof HTMLElementTagNameMap>(
   return element;
 }
 
-function renderEmojiPicker(emojiChoices: string[]): HTMLElement {
+function renderEmojiPicker(emojiChoices: string[], selectedEmojis: string[]): HTMLElement {
   const fieldset = createElement("fieldset", "emoji-picker");
   const legend = createElement("legend", undefined, "えもじ");
+  const selectedEmojiSet = new Set(selectedEmojis);
 
   fieldset.append(legend);
 
@@ -31,6 +41,7 @@ function renderEmojiPicker(emojiChoices: string[]): HTMLElement {
     input.type = "checkbox";
     input.name = "emoji";
     input.value = emoji;
+    input.checked = selectedEmojiSet.has(emoji);
 
     label.append(input, document.createTextNode(emoji));
     fieldset.append(label);
@@ -39,7 +50,7 @@ function renderEmojiPicker(emojiChoices: string[]): HTMLElement {
   return fieldset;
 }
 
-function renderTodaySection(entry: DiaryEntry, emojiChoices: string[]): HTMLElement {
+function renderTodaySection(entry: DiaryEntry, emojiChoices: string[], message: string): HTMLElement {
   const section = createElement("section", "panel");
   const heading = createElement("h2", undefined, "今日の記録");
   const form = createElement("form", "entry-form");
@@ -47,6 +58,7 @@ function renderTodaySection(entry: DiaryEntry, emojiChoices: string[]): HTMLElem
   const noteInput = createElement("textarea");
   const actionRow = createElement("div", "action-row");
   const saveButton = createElement("button", "primary-button", "保存");
+  const preview = renderEntryCard(entry);
 
   noteInput.name = "note";
   noteInput.rows = 3;
@@ -54,12 +66,34 @@ function renderTodaySection(entry: DiaryEntry, emojiChoices: string[]): HTMLElem
   noteInput.placeholder = "きょうあったこと";
   noteInput.value = entry.note;
 
-  saveButton.type = "button";
+  saveButton.type = "submit";
 
   noteLabel.append(noteInput);
   actionRow.append(saveButton);
-  form.append(renderEmojiPicker(emojiChoices), noteLabel, actionRow);
+  form.append(renderEmojiPicker(emojiChoices, entry.emojis), noteLabel, actionRow);
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    const formData = new FormData(form);
+    const emojis = formData.getAll("emoji").filter((value): value is string => typeof value === "string");
+    const note = formData.get("note");
+
+    diaryState = updateTodayEntry(diaryState, {
+      emojis,
+      note: typeof note === "string" ? note : "",
+    });
+    statusMessage = "記録しました";
+    renderPopup(diaryState);
+  });
+
   section.append(heading, form);
+
+  if (message) {
+    section.append(createElement("p", "form-status", message));
+  }
+
+  section.append(preview);
 
   return section;
 }
@@ -94,7 +128,12 @@ function renderPastSection(entries: DiaryEntry[]): HTMLElement {
 }
 
 function applyStyles(): void {
+  if (document.querySelector("#popup-style")) {
+    return;
+  }
+
   const style = createElement("style");
+  style.id = "popup-style";
 
   style.textContent = `
     :root {
@@ -189,6 +228,12 @@ function applyStyles(): void {
       pointer-events: none;
     }
 
+    .emoji-choice:has(input:checked) {
+      border-color: #2f6f5e;
+      background: #e8f2ee;
+      box-shadow: inset 0 0 0 1px #2f6f5e;
+    }
+
     .note-label {
       display: grid;
       gap: 6px;
@@ -223,6 +268,13 @@ function applyStyles(): void {
       font-size: 13px;
       font-weight: 700;
       cursor: pointer;
+    }
+
+    .form-status {
+      color: #2f6f5e;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.4;
     }
 
     .entry-list {
@@ -286,8 +338,8 @@ function renderPopup(state: DiaryState): void {
   const description = createElement("p", undefined, "絵文字とひとことで、今日をのこす");
 
   header.append(title, description);
-  shell.append(header, renderTodaySection(state.todayEntry, state.emojiChoices), renderPastSection(state.pastEntries));
+  shell.append(header, renderTodaySection(state.todayEntry, state.emojiChoices, statusMessage), renderPastSection(state.pastEntries));
   root.replaceChildren(shell);
 }
 
-renderPopup(createInitialDiaryState());
+renderPopup(diaryState);

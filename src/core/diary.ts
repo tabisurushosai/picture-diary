@@ -10,6 +10,11 @@ export type DiaryState = {
   emojiChoices: string[];
 };
 
+export type TodayEntryInput = {
+  emojis: string[];
+  note: string;
+};
+
 const defaultEmojiChoices = ["😊", "😐", "😢", "🌤️", "🍙", "📚", "🎨", "🏃"];
 
 const defaultTodayEntry: DiaryEntry = {
@@ -26,6 +31,23 @@ export function createInitialDiaryState(): DiaryState {
     },
     pastEntries: [],
     emojiChoices: [...defaultEmojiChoices],
+  };
+}
+
+export function createTodayEntry(input: TodayEntryInput, date = defaultTodayEntry.date): DiaryEntry {
+  return {
+    date,
+    emojis: [...new Set(input.emojis.filter((emoji) => emoji.length > 0))],
+    note: input.note.trim().slice(0, 80),
+  };
+}
+
+export function updateTodayEntry(state: DiaryState, input: TodayEntryInput): DiaryState {
+  return {
+    ...state,
+    todayEntry: createTodayEntry(input, state.todayEntry.date),
+    pastEntries: [...state.pastEntries],
+    emojiChoices: [...state.emojiChoices],
   };
 }
 
